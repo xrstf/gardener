@@ -22,6 +22,8 @@ const (
 	VertexTypeBackupBucket VertexType = iota
 	// VertexTypeBackupEntry is a constant for a 'BackupEntry' vertex.
 	VertexTypeBackupEntry
+	// VertexTypeBastion is a constant for a 'Bastion' vertex.
+	VertexTypeBastion
 	// VertexTypeCloudProfile is a constant for a 'CloudProfile' vertex.
 	VertexTypeCloudProfile
 	// VertexTypeConfigMap is a constant for a 'ConfigMap' vertex.
@@ -51,6 +53,7 @@ const (
 var vertexTypes = map[VertexType]string{
 	VertexTypeBackupBucket:           "BackupBucket",
 	VertexTypeBackupEntry:            "BackupEntry",
+	VertexTypeBastion:                "Bastion",
 	VertexTypeCloudProfile:           "CloudProfile",
 	VertexTypeConfigMap:              "ConfigMap",
 	VertexTypeControllerInstallation: "ControllerInstallation",

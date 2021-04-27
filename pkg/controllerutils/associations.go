@@ -113,6 +113,18 @@ func DetermineBackupEntryAssociations(ctx context.Context, c client.Client, seed
 	})
 }
 
+// DetermineBastionAssociations determine the Bastion resources which are associated
+// to seed with name <seedName>
+func DetermineBastionAssociations(ctx context.Context, c client.Client, seedName string) ([]string, error) {
+	return determineAssociations(ctx, c, seedName, &gardencorev1beta1.BastionList{}, func(o runtime.Object) (string, error) {
+		bastion, ok := o.(*gardencorev1beta1.Bastion)
+		if !ok {
+			return "", fmt.Errorf("got unexpected object when expecting Bastion")
+		}
+		return bastion.Status.SeedName, nil
+	})
+}
+
 // DetermineControllerInstallationAssociations determine the ControllerInstallation resources which are associated
 // to seed with name <seedName>
 func DetermineControllerInstallationAssociations(ctx context.Context, c client.Client, seedName string) ([]string, error) {

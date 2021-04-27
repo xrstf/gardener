@@ -49,6 +49,7 @@ var _ = Describe("graph", func() {
 		fakeInformerProject                *controllertest.FakeInformer
 		fakeInformerBackupBucket           *controllertest.FakeInformer
 		fakeInformerBackupEntry            *controllertest.FakeInformer
+		fakeInformerBastion                *controllertest.FakeInformer
 		fakeInformerSecretBinding          *controllertest.FakeInformer
 		fakeInformerControllerInstallation *controllertest.FakeInformer
 		fakeInformerManagedSeed            *controllertest.FakeInformer
@@ -76,6 +77,8 @@ var _ = Describe("graph", func() {
 
 		backupEntry1 *gardencorev1beta1.BackupEntry
 
+		bastion1 *gardencorev1beta1.Bastion
+
 		secretBinding1          *gardencorev1beta1.SecretBinding
 		secretBinding1SecretRef = corev1.SecretReference{Namespace: "foobar", Name: "bazfoo"}
 
@@ -95,6 +98,7 @@ var _ = Describe("graph", func() {
 		fakeInformerProject = &controllertest.FakeInformer{}
 		fakeInformerBackupBucket = &controllertest.FakeInformer{}
 		fakeInformerBackupEntry = &controllertest.FakeInformer{}
+		fakeInformerBastion = &controllertest.FakeInformer{}
 		fakeInformerSecretBinding = &controllertest.FakeInformer{}
 		fakeInformerControllerInstallation = &controllertest.FakeInformer{}
 		fakeInformerManagedSeed = &controllertest.FakeInformer{}
@@ -108,6 +112,7 @@ var _ = Describe("graph", func() {
 				gardencorev1beta1.SchemeGroupVersion.WithKind("Project"):                fakeInformerProject,
 				gardencorev1beta1.SchemeGroupVersion.WithKind("BackupBucket"):           fakeInformerBackupBucket,
 				gardencorev1beta1.SchemeGroupVersion.WithKind("BackupEntry"):            fakeInformerBackupEntry,
+				gardencorev1beta1.SchemeGroupVersion.WithKind("Bastion"):                fakeInformerBastion,
 				gardencorev1beta1.SchemeGroupVersion.WithKind("SecretBinding"):          fakeInformerSecretBinding,
 				gardencorev1beta1.SchemeGroupVersion.WithKind("ControllerInstallation"): fakeInformerControllerInstallation,
 				seedmanagementv1alpha1.SchemeGroupVersion.WithKind("ManagedSeed"):       fakeInformerManagedSeed,
@@ -169,6 +174,13 @@ var _ = Describe("graph", func() {
 			Spec: gardencorev1beta1.BackupEntrySpec{
 				BucketName: backupBucket1.Name,
 				SeedName:   &seed1.Name,
+			},
+		}
+
+		bastion1 = &gardencorev1beta1.Bastion{
+			ObjectMeta: metav1.ObjectMeta{Name: "bastion1", Namespace: "bastion1namespace"},
+			Status: gardencorev1beta1.BastionStatus{
+				SeedName: seed1.Name,
 			},
 		}
 
@@ -532,6 +544,37 @@ var _ = Describe("graph", func() {
 		Expect(graph.HasPathFrom(VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeSeed, "", *backupEntry1.Spec.SeedName)).To(BeFalse())
 	})
 
+	It("should behave as expected for gardencorev1beta1.Bastion", func() {
+		By("add")
+		fakeInformerBastion.Add(bastion1)
+		Expect(graph.graph.Nodes().Len()).To(Equal(2))
+		Expect(graph.graph.Edges().Len()).To(Equal(1))
+		Expect(graph.HasPathFrom(VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", bastion1.Status.SeedName)).To(BeTrue())
+
+		By("update (irrelevant change)")
+		bastion1Copy := bastion1.DeepCopy()
+		bastion1.Spec.SSHPublicKey = "foobar"
+		fakeInformerBastion.Update(bastion1Copy, bastion1)
+		Expect(graph.graph.Nodes().Len()).To(Equal(2))
+		Expect(graph.graph.Edges().Len()).To(Equal(1))
+		Expect(graph.HasPathFrom(VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", bastion1.Status.SeedName)).To(BeTrue())
+
+		By("update (seed name)")
+		bastion1Copy = bastion1.DeepCopy()
+		bastion1.Status.SeedName = "newseed"
+		fakeInformerBastion.Update(bastion1Copy, bastion1)
+		Expect(graph.graph.Nodes().Len()).To(Equal(2))
+		Expect(graph.graph.Edges().Len()).To(Equal(1))
+		Expect(graph.HasPathFrom(VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", bastion1Copy.Status.SeedName)).To(BeFalse())
+		Expect(graph.HasPathFrom(VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", bastion1.Status.SeedName)).To(BeTrue())
+
+		By("delete")
+		fakeInformerBastion.Delete(bastion1)
+		Expect(graph.graph.Nodes().Len()).To(BeZero())
+		Expect(graph.graph.Edges().Len()).To(BeZero())
+		Expect(graph.HasPathFrom(VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", bastion1.Status.SeedName)).To(BeFalse())
+	})
+
 	It("should behave as expected for gardencorev1beta1.SecretBinding", func() {
 		By("add")
 		fakeInformerSecretBinding.Add(secretBinding1)
@@ -721,6 +764,15 @@ var _ = Describe("graph", func() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			fakeInformerBastion.Add(bastion1)
+			lock.Lock()
+			defer lock.Unlock()
+			nodes, edges = nodes+1, edges+1
+			paths[VertexTypeBastion] = append(paths[VertexTypeBastion], pathExpectation{VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", seed1.Name, BeTrue()})
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			fakeInformerSecretBinding.Add(secretBinding1)
 			lock.Lock()
 			defer lock.Unlock()
@@ -826,6 +878,16 @@ var _ = Describe("graph", func() {
 			paths[VertexTypeBackupEntry] = append(paths[VertexTypeBackupEntry], pathExpectation{VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeBackupBucket, "", backupEntry1.Spec.BucketName, BeTrue()})
 			paths[VertexTypeBackupEntry] = append(paths[VertexTypeBackupEntry], pathExpectation{VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeSeed, "", *backupEntry1Copy.Spec.SeedName, BeTrue()})
 			paths[VertexTypeBackupEntry] = append(paths[VertexTypeBackupEntry], pathExpectation{VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeSeed, "", *backupEntry1.Spec.SeedName, BeTrue()})
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			bastion1Copy := bastion1.DeepCopy()
+			bastion1.Spec.SSHPublicKey = "new-key"
+			fakeInformerBackupEntry.Update(bastion1Copy, bastion1)
+			lock.Lock()
+			defer lock.Unlock()
+			paths[VertexTypeBackupEntry] = append(paths[VertexTypeBastion], pathExpectation{VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", seed1.Name, BeTrue()})
 		}()
 		wg.Add(1)
 		go func() {
@@ -1039,6 +1101,14 @@ var _ = Describe("graph", func() {
 			defer lock.Unlock()
 			paths[VertexTypeBackupEntry] = append(paths[VertexTypeBackupEntry], pathExpectation{VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeBackupBucket, "", backupEntry1.Spec.BucketName, BeFalse()})
 			paths[VertexTypeBackupEntry] = append(paths[VertexTypeBackupEntry], pathExpectation{VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeSeed, "", *backupEntry1.Spec.SeedName, BeFalse()})
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			fakeInformerBastion.Delete(bastion1)
+			lock.Lock()
+			defer lock.Unlock()
+			paths[VertexTypeBastion] = append(paths[VertexTypeBastion], pathExpectation{VertexTypeBastion, bastion1.Namespace, bastion1.Name, VertexTypeSeed, "", bastion1.Status.SeedName, BeFalse()})
 		}()
 		wg.Add(1)
 		go func() {

@@ -26,7 +26,7 @@ import (
 func ValidateBastion(bastion *core.Bastion) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&bastion.ObjectMeta, false, apivalidation.NameIsDNSLabel, field.NewPath("metadata"))...)
+	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&bastion.ObjectMeta, true, apivalidation.NameIsDNSLabel, field.NewPath("metadata"))...)
 	allErrs = append(allErrs, ValidateBastionSpec(&bastion.Spec, field.NewPath("spec"))...)
 
 	return allErrs
@@ -55,19 +55,16 @@ func ValidateBastionSpec(spec *core.BastionSpec, fldPath *field.Path) field.Erro
 	}
 	// TODO: validate SSH key thoroughly?
 
-	hasValidBlock := false
-	for _, block := range spec.Ingress {
-		if len(block.IPBlock.CIDR) > 0 {
-			if _, _, err := net.ParseCIDR(block.IPBlock.CIDR); err != nil {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("ingress"), block.IPBlock.CIDR, "invalid CIDR"))
-			} else {
-				hasValidBlock = true
-			}
-		}
+	if len(spec.Ingress) == 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("ingress"), spec.Ingress, "ingress must not be empty"))
 	}
 
-	if !hasValidBlock {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("ingress"), nil, "must provide at least one CIDR"))
+	for _, block := range spec.Ingress {
+		if len(block.IPBlock.CIDR) == 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("ingress"), block.IPBlock.CIDR, "CIDR must not be empty"))
+		} else if _, _, err := net.ParseCIDR(block.IPBlock.CIDR); err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("ingress"), block.IPBlock.CIDR, "invalid CIDR"))
+		}
 	}
 
 	return allErrs

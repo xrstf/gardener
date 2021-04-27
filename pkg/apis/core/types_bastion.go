@@ -69,7 +69,7 @@ type BastionIngressPolicy struct {
 
 // BastionStatus holds the most recently observed status of the Bastion.
 type BastionStatus struct {
-	// SeedName is the name of the seed to which this BackupEntry is currently scheduled. This field is populated
+	// SeedName is the name of the seed to which this Bastion is currently scheduled. This field is populated
 	// at the beginning of a create/reconcile operation.
 	SeedName string
 	// ProviderType is cloud provider used by the referenced Shoot.

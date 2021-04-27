@@ -12,86 +12,136 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package validation_test
+package validation_test
 
-// import (
-// 	"github.com/gardener/gardener/pkg/apis/core"
-// 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-// 	"k8s.io/apimachinery/pkg/util/validation/field"
+import (
+	"github.com/gardener/gardener/pkg/apis/core"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
-// 	. "github.com/gardener/gardener/pkg/apis/core/validation"
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	. "github.com/onsi/gomega/gstruct"
-// )
+	. "github.com/gardener/gardener/pkg/apis/core/validation"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+)
 
-// var _ = Describe("validation", func() {
-// 	var bastion *core.Bastion
+var _ = Describe("validation", func() {
+	var bastion *core.Bastion
 
-// 	BeforeEach(func() {
-// 		bastion = &core.Bastion{
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Name:      "example-backup-entry",
-// 				Namespace: "garden",
-// 				Annotations: map[string]string{
-// 					core.BastionForceDeletion: "true",
-// 				},
-// 			},
-// 			Spec: core.BastionSpec{
-// 				BucketName: "some-bucket",
-// 			},
-// 		}
-// 	})
+	BeforeEach(func() {
+		bastion = &core.Bastion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-bastion",
+				Namespace: "garden",
+			},
+			Spec: core.BastionSpec{
+				ShootRef: core.BastionShootReference{
+					Name: "example-shoot",
+				},
+				SSHPublicKey: "ssh-rsa 1234",
+				Ingress: []core.BastionIngressPolicy{{
+					IPBlock: networkingv1.IPBlock{
+						CIDR: "1.2.3.4/8",
+					},
+				}},
+			},
+		}
+	})
 
-// 	Describe("#ValidateBastion", func() {
-// 		It("should not return any errors", func() {
-// 			errorList := ValidateBastion(bastion)
+	Describe("#ValidateBastion", func() {
+		It("should not return any errors", func() {
+			errorList := ValidateBastion(bastion)
 
-// 			Expect(errorList).To(HaveLen(0))
-// 		})
+			Expect(errorList).To(HaveLen(0))
+		})
 
-// 		It("should forbid Bastion resources with empty metadata", func() {
-// 			bastion.ObjectMeta = metav1.ObjectMeta{}
+		It("should forbid Bastion resources with empty metadata", func() {
+			bastion.ObjectMeta = metav1.ObjectMeta{}
 
-// 			errorList := ValidateBastion(bastion)
+			errorList := ValidateBastion(bastion)
 
-// 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-// 				"Type":  Equal(field.ErrorTypeRequired),
-// 				"Field": Equal("metadata.name"),
-// 			})),
-// 				PointTo(MatchFields(IgnoreExtras, Fields{
-// 					"Type":  Equal(field.ErrorTypeRequired),
-// 					"Field": Equal("metadata.namespace"),
-// 				}))))
-// 		})
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("metadata.name"),
+			})), PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("metadata.namespace"),
+			}))))
+		})
 
-// 		It("should forbid Bastion specification with empty or invalid keys", func() {
-// 			bastion.Spec.BucketName = ""
+		It("should forbid Bastion specification with empty SSH key", func() {
+			bastion.Spec.SSHPublicKey = ""
 
-// 			errorList := ValidateBastion(bastion)
+			errorList := ValidateBastion(bastion)
 
-// 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-// 				"Type":  Equal(field.ErrorTypeInvalid),
-// 				"Field": Equal("spec.bucketName"),
-// 			}))))
-// 		})
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("spec.sshPublicKey"),
+			}))))
+		})
 
-// 		It("should forbid updating some keys", func() {
-// 			newBastion := prepareBastionForUpdate(bastion)
-// 			newBastion.Spec.BucketName = "another-bucketName"
+		It("should forbid Bastion specification with empty Shoot ref", func() {
+			bastion.Spec.ShootRef.Name = ""
 
-// 			errorList := ValidateBastionUpdate(newBastion, bastion)
+			errorList := ValidateBastion(bastion)
 
-// 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-// 				"Type":  Equal(field.ErrorTypeInvalid),
-// 				"Field": Equal("spec.bucketName"),
-// 			}))))
-// 		})
-// 	})
-// })
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("spec.shootRef.name"),
+			}))))
+		})
 
-// func prepareBastionForUpdate(obj *core.Bastion) *core.Bastion {
-// 	newObj := obj.DeepCopy()
-// 	newObj.ResourceVersion = "1"
-// 	return newObj
-// }
+		It("should forbid Bastion specification with empty ingress", func() {
+			bastion.Spec.Ingress = []core.BastionIngressPolicy{}
+
+			errorList := ValidateBastion(bastion)
+
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("spec.ingress"),
+			}))))
+		})
+
+		It("should forbid Bastion specification with invalid ingress", func() {
+			bastion.Spec.Ingress[0].IPBlock.CIDR = "not-a-cidr"
+
+			errorList := ValidateBastion(bastion)
+
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("spec.ingress"),
+			}))))
+		})
+
+		It("should forbid changing Shoot ref", func() {
+			newBastion := prepareBastionForUpdate(bastion)
+			newBastion.Spec.ShootRef.Name = "another-shoot"
+
+			errorList := ValidateBastionUpdate(newBastion, bastion)
+
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("spec.shootRef.name"),
+			}))))
+		})
+
+		It("should forbid changing SSH key", func() {
+			newBastion := prepareBastionForUpdate(bastion)
+			newBastion.Spec.SSHPublicKey = "ssh-rsa another-key"
+
+			errorList := ValidateBastionUpdate(newBastion, bastion)
+
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("spec.sshPublicKey"),
+			}))))
+		})
+	})
+})
+
+func prepareBastionForUpdate(obj *core.Bastion) *core.Bastion {
+	newObj := obj.DeepCopy()
+	newObj.ResourceVersion = "1"
+	return newObj
+}

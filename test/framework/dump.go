@@ -190,6 +190,17 @@ func (f *GardenerFramework) dumpGardenerExtensionsInNamespace(ctx context.Contex
 		f.Logger.Println()
 	}
 
+	f.Logger.Infof("%s [EXTENSIONS] [BASTION]", ctxIdentifier)
+	bastions := &v1alpha1.BastionList{}
+	err = k8sClient.Client().List(ctx, bastions, client.InNamespace(namespace))
+	result = multierror.Append(result, err)
+	if err == nil {
+		for _, entry := range bastions.Items {
+			f.dumpGardenerExtension(&entry)
+		}
+		f.Logger.Println()
+	}
+
 	f.Logger.Infof("%s [EXTENSIONS] [NETWORK]", ctxIdentifier)
 	networks := &v1alpha1.NetworkList{}
 	err = k8sClient.Client().List(ctx, networks, client.InNamespace(namespace))

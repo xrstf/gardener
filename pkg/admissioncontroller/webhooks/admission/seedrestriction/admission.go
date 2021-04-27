@@ -44,6 +44,7 @@ var (
 	// group and the resource (but it ignores the version).
 	backupBucketResource = gardencorev1beta1.Resource("backupbuckets")
 	backupEntryResource  = gardencorev1beta1.Resource("backupentries")
+	bastionResource      = gardencorev1beta1.Resource("bastions")
 	shootStateResource   = gardencorev1beta1.Resource("shootstates")
 )
 
@@ -89,6 +90,8 @@ func (h *handler) Handle(ctx context.Context, request admission.Request) admissi
 		return h.admitBackupBucket(seedName, request)
 	case backupEntryResource:
 		return h.admitBackupEntry(ctx, seedName, request)
+	case bastionResource:
+		return h.admitBastion(seedName, request)
 	case shootStateResource:
 		return h.admitShootState(ctx, seedName, request)
 	}
@@ -129,6 +132,19 @@ func (h *handler) admitBackupEntry(ctx context.Context, seedName string, request
 	}
 
 	return h.admit(seedName, backupBucket.Spec.SeedName)
+}
+
+func (h *handler) admitBastion(seedName string, request admission.Request) admission.Response {
+	if request.Operation != admissionv1.Create {
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("unexpected operation: %q", request.Operation))
+	}
+
+	bastion := &gardencorev1beta1.Bastion{}
+	if err := h.decoder.Decode(request, bastion); err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	return h.admit(seedName, &bastion.Status.SeedName)
 }
 
 func (h *handler) admitShootState(ctx context.Context, seedName string, request admission.Request) admission.Response {

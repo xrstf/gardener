@@ -53,6 +53,20 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 	}
 
 	if err := scheme.AddFieldLabelConversionFunc(
+		SchemeGroupVersion.WithKind("Bastion"),
+		func(label, value string) (string, string, error) {
+			switch label {
+			case "metadata.name", "metadata.namespace", core.BastionSeedName:
+				return label, value, nil
+			default:
+				return "", "", fmt.Errorf("field label not supported: %s", label)
+			}
+		},
+	); err != nil {
+		return err
+	}
+
+	if err := scheme.AddFieldLabelConversionFunc(
 		SchemeGroupVersion.WithKind("ControllerInstallation"),
 		func(label, value string) (string, string, error) {
 			switch label {

@@ -171,6 +171,23 @@ func BackupEntryIsManagedByThisGardenlet(ctx context.Context, c client.Client, b
 	return seedLabelsMatchWithClient(ctx, c, *backupEntry.Spec.SeedName, gc.SeedSelector)
 }
 
+// BastionFilterFunc returns a filtering func for the seeds and the given label selector.
+func BastionFilterFunc(ctx context.Context, c client.Client, seedName string, labelSelector *metav1.LabelSelector) func(obj interface{}) bool {
+	return func(obj interface{}) bool {
+		bastion, ok := obj.(*gardencorev1beta1.Bastion)
+		if !ok {
+			return false
+		}
+		if bastion.Status.SeedName == "" {
+			return false
+		}
+		if len(seedName) > 0 {
+			return bastion.Status.SeedName == seedName
+		}
+		return seedLabelsMatchWithClient(ctx, c, bastion.Status.SeedName, labelSelector)
+	}
+}
+
 // ManagedSeedFilterFunc returns a filtering func for ManagedSeeds that checks if the ManagedSeed references a Shoot scheduled on a Seed, for which the gardenlet is responsible..
 func ManagedSeedFilterFunc(ctx context.Context, c client.Client, seedName string, labelSelector *metav1.LabelSelector) func(obj interface{}) bool {
 	return func(obj interface{}) bool {
