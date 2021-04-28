@@ -21,6 +21,7 @@ import (
 
 	"github.com/gardener/gardener/pkg/admissioncontroller/seedidentity"
 	acadmission "github.com/gardener/gardener/pkg/admissioncontroller/webhooks/admission"
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 
@@ -139,7 +140,7 @@ func (h *handler) admitBastion(seedName string, request admission.Request) admis
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("unexpected operation: %q", request.Operation))
 	}
 
-	bastion := &gardencorev1beta1.Bastion{}
+	bastion := &gardencorev1alpha1.Bastion{}
 	if err := h.decoder.Decode(request, bastion); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}

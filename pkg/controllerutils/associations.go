@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorelisters "github.com/gardener/gardener/pkg/client/core/listers/core/v1beta1"
 	"github.com/gardener/gardener/pkg/logger"
@@ -116,8 +117,8 @@ func DetermineBackupEntryAssociations(ctx context.Context, c client.Client, seed
 // DetermineBastionAssociations determine the Bastion resources which are associated
 // to seed with name <seedName>
 func DetermineBastionAssociations(ctx context.Context, c client.Client, seedName string) ([]string, error) {
-	return determineAssociations(ctx, c, seedName, &gardencorev1beta1.BastionList{}, func(o runtime.Object) (string, error) {
-		bastion, ok := o.(*gardencorev1beta1.Bastion)
+	return determineAssociations(ctx, c, seedName, &gardencorev1alpha1.BastionList{}, func(o runtime.Object) (string, error) {
+		bastion, ok := o.(*gardencorev1alpha1.Bastion)
 		if !ok {
 			return "", fmt.Errorf("got unexpected object when expecting Bastion")
 		}

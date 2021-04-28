@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sync"
 
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
@@ -77,7 +78,7 @@ var _ = Describe("graph", func() {
 
 		backupEntry1 *gardencorev1beta1.BackupEntry
 
-		bastion1 *gardencorev1beta1.Bastion
+		bastion1 *gardencorev1alpha1.Bastion
 
 		secretBinding1          *gardencorev1beta1.SecretBinding
 		secretBinding1SecretRef = corev1.SecretReference{Namespace: "foobar", Name: "bazfoo"}
@@ -177,9 +178,9 @@ var _ = Describe("graph", func() {
 			},
 		}
 
-		bastion1 = &gardencorev1beta1.Bastion{
+		bastion1 = &gardencorev1alpha1.Bastion{
 			ObjectMeta: metav1.ObjectMeta{Name: "bastion1", Namespace: "bastion1namespace"},
-			Status: gardencorev1beta1.BastionStatus{
+			Status: gardencorev1alpha1.BastionStatus{
 				SeedName: seed1.Name,
 			},
 		}
@@ -544,7 +545,7 @@ var _ = Describe("graph", func() {
 		Expect(graph.HasPathFrom(VertexTypeBackupEntry, backupEntry1.Namespace, backupEntry1.Name, VertexTypeSeed, "", *backupEntry1.Spec.SeedName)).To(BeFalse())
 	})
 
-	It("should behave as expected for gardencorev1beta1.Bastion", func() {
+	It("should behave as expected for gardencorev1alpha1.Bastion", func() {
 		By("add")
 		fakeInformerBastion.Add(bastion1)
 		Expect(graph.graph.Nodes().Len()).To(Equal(2))

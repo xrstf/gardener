@@ -17,7 +17,7 @@ package graph
 import (
 	"time"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -26,7 +26,7 @@ import (
 func (g *graph) setupBastionWatch(informer cache.Informer) {
 	informer.AddEventHandler(toolscache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			bastion, ok := obj.(*gardencorev1beta1.Bastion)
+			bastion, ok := obj.(*gardencorev1alpha1.Bastion)
 			if !ok {
 				return
 			}
@@ -34,12 +34,12 @@ func (g *graph) setupBastionWatch(informer cache.Informer) {
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			oldBastion, ok := oldObj.(*gardencorev1beta1.Bastion)
+			oldBastion, ok := oldObj.(*gardencorev1alpha1.Bastion)
 			if !ok {
 				return
 			}
 
-			newBastion, ok := newObj.(*gardencorev1beta1.Bastion)
+			newBastion, ok := newObj.(*gardencorev1alpha1.Bastion)
 			if !ok {
 				return
 			}
@@ -53,7 +53,7 @@ func (g *graph) setupBastionWatch(informer cache.Informer) {
 			if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
 				obj = tombstone.Obj
 			}
-			bastion, ok := obj.(*gardencorev1beta1.Bastion)
+			bastion, ok := obj.(*gardencorev1alpha1.Bastion)
 			if !ok {
 				return
 			}
@@ -62,7 +62,7 @@ func (g *graph) setupBastionWatch(informer cache.Informer) {
 	})
 }
 
-func (g *graph) handleBastionCreateOrUpdate(bastion *gardencorev1beta1.Bastion) {
+func (g *graph) handleBastionCreateOrUpdate(bastion *gardencorev1alpha1.Bastion) {
 	start := time.Now()
 	defer func() {
 		metricUpdateDuration.WithLabelValues("Bastion", "CreateOrUpdate").Observe(time.Since(start).Seconds())
@@ -81,7 +81,7 @@ func (g *graph) handleBastionCreateOrUpdate(bastion *gardencorev1beta1.Bastion) 
 	}
 }
 
-func (g *graph) handleBastionDelete(bastion *gardencorev1beta1.Bastion) {
+func (g *graph) handleBastionDelete(bastion *gardencorev1alpha1.Bastion) {
 	start := time.Now()
 	defer func() {
 		metricUpdateDuration.WithLabelValues("Bastion", "Delete").Observe(time.Since(start).Seconds())
